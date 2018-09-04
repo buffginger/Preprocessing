@@ -6,7 +6,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
-import java.util.regex.Pattern;
 import java.util.Arrays;
 import java.util.Comparator;
 public class Main {
@@ -108,6 +107,13 @@ public class Main {
         for (int i = 0; i < 10; i++) {
             System.out.print(sortedMap[i].toString().replaceFirst("=.*", "") );
             if (i != 9) {
+                System.out.print(", ");
+            }
+        }
+        System.out.print("\n2c) The bottom ten words are: ");
+        for (int i = sortedMap.length - 1; i > sortedMap.length -11; i--) {
+            System.out.print(sortedMap[i].toString().replaceFirst("=.*",""));
+            if (i != sortedMap.length -10) {
                 System.out.print(", ");
             }
         }
