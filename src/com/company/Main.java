@@ -11,19 +11,19 @@ import java.util.Iterator;
 
 public class Main {
 
-    public static void main(String[] args) {
+    static File stopWords = new File("/Users/ethananderson/Downloads/stop-word-list.txt");
+    // Create a TreeSet from the provided stopWords file. This is class-defined since only one instance is needed
+    static TreeSet<String> stopWordsTree= getStopWordsAsTree(stopWords);
 
-        File stopWords = new File("/Users/ethananderson/Downloads/stop-word-list.txt");
+    public static void main(String[] args) {
 
         // Set the path to the documentset folder
         File documentSet = new File("/Users/ethananderson/Downloads/documentset");
 
-        // Create a TreeSet from the provided stopWords file
-        TreeSet<String> stopWordsTree= getStopWordsAsTree(stopWords);
-
-        // Initial wordMap, for #2. 
+        // Initial wordMap, for #2.
         HashMap<String, Integer> wordMap1 = createMapFromDocs(documentSet);
-        displayResults(wordMap1);
+        Integer num = 2;
+        displayResults(wordMap1, num);
 
     }
 
@@ -43,12 +43,26 @@ public class Main {
         return wordMap.size();
     }
 
-    public static void displayResults(HashMap<String, Integer> wordMap) {
-        System.out.println("2a) There are " + numKeyWords(wordMap) + " keywords");
-        sortMap(wordMap);
+    public static void displayResults(HashMap<String, Integer> wordMap, int num) {
+        System.out.println(num + "a) There are " + numKeyWords(wordMap) + " keywords");
+        Object[] sortedMap = sortMap(wordMap);
+        System.out.print(num + "b) The top ten words are: ");
+        for (int i = 0; i < 10; i++) {
+            System.out.print(sortedMap[i].toString().replaceFirst("=.*", "") );
+            if (i != 9) {
+                System.out.print(", ");
+            }
+        }
+        System.out.print("\n" + num + "c) The bottom ten words are: ");
+        for (int i = sortedMap.length - 1; i > sortedMap.length -11; i--) {
+            System.out.print(sortedMap[i].toString().replaceFirst("=.*",""));
+            if (i != sortedMap.length -10) {
+                System.out.print(", ");
+            }
+        }
     }
 
-    public static void sortMap(HashMap<String, Integer> wordMap) {
+    public static Object[] sortMap(HashMap<String, Integer> wordMap) {
         Object[] sortedMap = wordMap.entrySet().toArray();
         Arrays.sort(sortedMap, new Comparator() {
             public int compare(Object o1, Object o2) {
@@ -56,21 +70,8 @@ public class Main {
                         .compareTo(((Map.Entry<String, Integer>) o1).getValue());
             }
         });
-        System.out.print("2b) The top ten words are: ");
-        for (int i = 0; i < 10; i++) {
-            System.out.print(sortedMap[i].toString().replaceFirst("=.*", "") );
-            if (i != 9) {
-                System.out.print(", ");
-            }
-        }
-        System.out.print("\n2c) The bottom ten words are: ");
-        for (int i = sortedMap.length - 1; i > sortedMap.length -11; i--) {
-            System.out.print(sortedMap[i].toString().replaceFirst("=.*",""));
-            if (i != sortedMap.length -10) {
-                System.out.print(", ");
-            }
-        }
 
+        return sortedMap;
     }
 
     public static TreeSet<String> getStopWordsAsTree(File stopWords) {
@@ -124,6 +125,9 @@ public class Main {
                             // Filter out tags
                             if (isHTMLTag(word) == false) {
                                 word = removePunctuation(word);
+                                // Send to Stemmer if needed
+                                // Send to Stopwords if needed
+                                
                                 wordMap.put(word, wordMap.getOrDefault(word, 0) + 1);
                             }
 
@@ -142,6 +146,15 @@ public class Main {
         } // end for
         return wordMap;
 
+    }
+
+    // Returns false if the word is not a stopword
+    public static boolean isStopWord(String word) {
+        if (!stopWordsTree.contains(word)) {
+            return false;
+        } else {
+            return true;
+        }
     }
 
 }
