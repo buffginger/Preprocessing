@@ -1,4 +1,5 @@
 package com.company;
+
 import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
@@ -70,7 +71,7 @@ public class Main {
                 System.out.print(", ");
             }
         }
-        System.out.print("\n" + num + "c) The bottom ten words are: ");
+        System.out.print("\n" + num + "d) The bottom ten words are: ");
         for (int i = sortedMap.length - 1; i > sortedMap.length -11; i--) {
             System.out.print(sortedMap[i].toString().replaceFirst("=.*",""));
             if (i != sortedMap.length -10) {
@@ -146,7 +147,7 @@ public class Main {
 
 
                                 // Send to Stopwords if needed
-                                if (option == "stopwords" && isStopWord(word) ) {
+                                if (option == "stopwords" && isStopWord(word) && !word.equals("") ) {
                                     // don't add it
                                 }
                                 // Send to Stemmer if needed
@@ -157,8 +158,10 @@ public class Main {
                                     }
 
                                 } else {
+                                    if (!word.equals("")){
+                                        wordMap.put(word, wordMap.getOrDefault(word, 0) + 1);
 
-                                    wordMap.put(word, wordMap.getOrDefault(word, 0) + 1);
+                                    }
                                 }
                             }
 
