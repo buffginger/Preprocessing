@@ -1,29 +1,46 @@
 package com.company;
 import java.io.*;
-import java.nio.Buffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.TreeSet;
-import java.util.Iterator;
 
 public class Main {
+
 
     static File stopWords = new File("/Users/ethananderson/Downloads/stop-word-list.txt");
     // Create a TreeSet from the provided stopWords file. This is class-defined since only one instance is needed
     static TreeSet<String> stopWordsTree= getStopWordsAsTree(stopWords);
 
+    static Porter porter = new Porter();
+
     public static void main(String[] args) {
+        long start = System.currentTimeMillis();
 
         // Set the path to the documentset folder
         File documentSet = new File("/Users/ethananderson/Downloads/documentset");
 
         // Initial wordMap, for #2.
-        HashMap<String, Integer> wordMap1 = createMapFromDocs(documentSet);
+        String option = "";
+        HashMap<String, Integer> wordMap1 = createMapFromDocs(documentSet, option);
         Integer num = 2;
         displayResults(wordMap1, num);
+
+        // wordMap with stopwords removed for #3
+        option = "stopwords";
+        HashMap<String, Integer> wordMapStopWord = createMapFromDocs(documentSet, option);
+        num = 3;
+        displayResults(wordMapStopWord, num);
+
+        // wordMap with stemming for #4
+        option = "stem";
+        HashMap<String, Integer> wordMapStem = createMapFromDocs(documentSet, option);
+        num = 4;
+        displayResults(wordMapStem, num);
+        long total = System.currentTimeMillis() - start;
+        System.out.println("\nRun time: " + total + " miliseconds");
 
     }
 
@@ -36,7 +53,7 @@ public class Main {
     }
 
     public static String removePunctuation(String word) {
-        return word.replaceAll("[^\\w\\s]|_", "");
+            return word.replaceAll("[^\\w\\s]|_", "");
     }
 
     public static int numKeyWords(HashMap<String, Integer> wordMap) {
@@ -60,6 +77,7 @@ public class Main {
                 System.out.print(", ");
             }
         }
+        System.out.println();
     }
 
     public static Object[] sortMap(HashMap<String, Integer> wordMap) {
@@ -92,7 +110,7 @@ public class Main {
         return ts;
     }
 
-    public static HashMap<String, Integer> createMapFromDocs(File folder) {
+    public static HashMap<String, Integer> createMapFromDocs(File folder, String option) {
 
         // Data structure to hold our words e.g key => value
         HashMap<String, Integer> wordMap = new HashMap<>();
@@ -125,10 +143,23 @@ public class Main {
                             // Filter out tags
                             if (isHTMLTag(word) == false) {
                                 word = removePunctuation(word);
-                                // Send to Stemmer if needed
+
+
                                 // Send to Stopwords if needed
-                                
-                                wordMap.put(word, wordMap.getOrDefault(word, 0) + 1);
+                                if (option == "stopwords" && isStopWord(word) ) {
+                                    // don't add it
+                                }
+                                // Send to Stemmer if needed
+                                else if (option == "stem") {
+                                    if (!word.equals("") && !isStopWord(word)) {
+                                        word = porter.stripAffixes(word);
+                                        wordMap.put(word, wordMap.getOrDefault(word, 0) + 1);
+                                    }
+
+                                } else {
+
+                                    wordMap.put(word, wordMap.getOrDefault(word, 0) + 1);
+                                }
                             }
 
                             /* a.   How many unique keywords are there in this collection?
