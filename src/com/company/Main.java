@@ -7,6 +7,9 @@ import java.util.StringTokenizer;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.TreeSet;
+import java.util.ArrayList;
+
+// ./Main <Document set> <Query file>
 
 public class Main {
 
@@ -17,32 +20,70 @@ public class Main {
 
     static Porter porter = new Porter();
 
+    static ArrayList<String> queryList = new ArrayList<>();
+    static long start;
+
     public static void main(String[] args) {
-        long start = System.currentTimeMillis();
+        /*
+        if (args.length != 2) {
+            System.out.println("Please use two command line arguments.\n" +
+                    "Example: ./Main <Document Set> <Query Terms File>");
+            System.exit(0); }
+            */
+
+        String fileName;
 
         // Set the path to the documentset folder
+        //File documentSet = new File(args[0]);
+        //File queryDocument = new File(args[1]);
+        File queryDocument = new File("/Users/ethananderson/Downloads/query.txt");
         File documentSet = new File("/Users/ethananderson/Downloads/documentset");
+        File[] fileList = documentSet.listFiles();   // Get the # of total files
 
-        // Initial wordMap, for #2.
-        String option = "";
-        HashMap<String, Integer> wordMap1 = createMapFromDocs(documentSet, option);
-        Integer num = 2;
-        displayResults(wordMap1, num);
+        createQueryTermList(queryDocument);
 
-        // wordMap with stopwords removed for #3
-        option = "stopwords";
-        HashMap<String, Integer> wordMapStopWord = createMapFromDocs(documentSet, option);
-        num = 3;
-        displayResults(wordMapStopWord, num);
+        HashMap<String, Double> docRanks = new HashMap<>();
 
-        // wordMap with stemming for #4
-        option = "stem";
-        HashMap<String, Integer> wordMapStem = createMapFromDocs(documentSet, option);
-        num = 4;
-        displayResults(wordMapStem, num);
-        long total = System.currentTimeMillis() - start;
-        System.out.println("\nRun time: " + total + " miliseconds");
+        // Process each query
+        for (String query : queryList) {
+            start = System.currentTimeMillis();
+            // call query method
+            docRanks = createPageFromDocs(fileList, query);
+            // Sort docRanks by value and Print top 10
+            displayResults(docRanks, query);
+        }
 
+    }
+
+    public static void createQueryTermList (File file) {
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            String line;    // the line of text from the file
+            // Read each line in the file
+            while ((line = br.readLine()) != null) {
+
+                // Stop and Stem the line
+                StringTokenizer st = new StringTokenizer(line, " ");
+                String word;
+                String phrase = "";
+                while (st.hasMoreElements()) {
+                    word = st.nextToken().toLowerCase();
+                    if (isStopWord(word) && !word.equals("")) {
+                        // don't add it
+                    }
+                    // Send to Stemmer if needed
+                    else {
+                        if (!word.equals("") && !isStopWord(word)) {
+                            word = porter.stripAffixes(word);
+                            phrase += word + " ";
+                        }
+                    }
+                }
+                // Capture each query
+                queryList.add(phrase);
+            }
+        }catch(IOException e) {
+            System.err.println(e);
+        }
     }
 
     public static boolean isHTMLTag(String word) {
@@ -61,32 +102,22 @@ public class Main {
         return wordMap.size();
     }
 
-    public static void displayResults(HashMap<String, Integer> wordMap, int num) {
-        System.out.println(num + "a) There are " + numKeyWords(wordMap) + " keywords");
+    public static void displayResults(HashMap<String, Double> wordMap, String query) {
         Object[] sortedMap = sortMap(wordMap);
-        System.out.print(num + "b) The top ten words are: ");
+        long time = System.currentTimeMillis() - start;
+        System.out.println("Query: \"" + query + "\", time to process: " + time);
         for (int i = 0; i < 10; i++) {
-            System.out.print(sortedMap[i].toString().replaceFirst("=.*", "") );
-            if (i != 9) {
-                System.out.print(", ");
-            }
-        }
-        System.out.print("\n" + num + "d) The bottom ten words are: ");
-        for (int i = sortedMap.length - 1; i > sortedMap.length -11; i--) {
-            System.out.print(sortedMap[i].toString().replaceFirst("=.*",""));
-            if (i != sortedMap.length -10) {
-                System.out.print(", ");
-            }
+            System.out.println(sortedMap[i].toString().replaceFirst("\\.txt", "").replaceFirst("=", ":\t"));
         }
         System.out.println();
     }
 
-    public static Object[] sortMap(HashMap<String, Integer> wordMap) {
+    public static Object[] sortMap(HashMap<String, Double> wordMap) {
         Object[] sortedMap = wordMap.entrySet().toArray();
         Arrays.sort(sortedMap, new Comparator() {
             public int compare(Object o1, Object o2) {
-                return ((Map.Entry<String, Integer>) o2).getValue()
-                        .compareTo(((Map.Entry<String, Integer>) o1).getValue());
+                return ((Map.Entry<String, Double>) o2).getValue()
+                        .compareTo(((Map.Entry<String, Double>) o1).getValue());
             }
         });
 
@@ -111,25 +142,41 @@ public class Main {
         return ts;
     }
 
-    public static HashMap<String, Integer> createMapFromDocs(File folder, String option) {
-
+    public static HashMap<String, Double> createPageFromDocs(File[] fileList, String query) {
         // Data structure to hold our words e.g key => value
-        HashMap<String, Integer> wordMap = new HashMap<>();
-        String word = "";
-        File[] fileList = folder.listFiles();   // Get the # of total files
+        HashMap<String, Double> wordMap = new HashMap<>();
 
-        // Iterate through each file
         for (File file : fileList) {
+            // Iterate through each file
             if (file.isFile()) {
-                // Open the file for reading
-                try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-                    String line;    // the line of text from the file
-                    // Skip the first 12 lines of the file, as they aren't needed
-                    for (int i = 0; i < 12; i++) {
-                        br.readLine();
-                    }
-                    // Read each line in the file
-                    while ((line = br.readLine()) != null) {
+                wordMap.put(file.getName(), calculateRank(file, query));
+            }
+        }
+
+        return wordMap;
+    }
+
+    public static Double calculateRank(File file, String query) {
+        String word = "";
+        double totalWords = 0;
+        HashMap<String, Integer> keywords = new HashMap<>();
+        TreeSet<String> queryTerms = new TreeSet<>();
+
+        StringTokenizer st = new StringTokenizer(query, " ");
+        while (st.hasMoreElements()) {
+            word = st.nextToken().toLowerCase();
+            queryTerms.add(word);
+        }
+
+
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            String line;    // the line of text from the file
+            // Skip the first 12 lines of the file, as they aren't needed
+            for (int i = 0; i < 12; i++) {
+                br.readLine();
+            }
+            // Read each line in the file
+            while ((line = br.readLine()) != null) {
 
                         /* Preprocess the line
                         a) eliminate the HTML tags
@@ -137,49 +184,54 @@ public class Main {
                         c) tokenize the text
                         */
 
-                        StringTokenizer st = new StringTokenizer(line, " ");
-                        while (st.hasMoreElements()) {
-                            word = st.nextToken().toLowerCase();
+                StringTokenizer str = new StringTokenizer(line, " ");
+                while (str.hasMoreElements()) {
+                    word = str.nextToken().toLowerCase();
 
-                            // Filter out tags
-                            if (isHTMLTag(word) == false) {
-                                word = removePunctuation(word);
+                    // Filter out tags
+                    if (isHTMLTag(word) == false) {
+                        word = removePunctuation(word);
 
 
-                                // Send to Stopwords if needed
-                                if (option == "stopwords" && isStopWord(word) && !word.equals("") ) {
-                                    // don't add it
-                                }
-                                // Send to Stemmer if needed
-                                else if (option == "stem") {
-                                    if (!word.equals("") && !isStopWord(word)) {
-                                        word = porter.stripAffixes(word);
-                                        wordMap.put(word, wordMap.getOrDefault(word, 0) + 1);
-                                    }
+                        // Send to Stopwords if needed
+                        if (isStopWord(word) && !word.equals("")) {
+                            // don't add it
+                        }
+                        // Send to Stemmer if needed
+                        else {
+                            if (!word.equals("") && !isStopWord(word)) {
+                                word = porter.stripAffixes(word);
+                                totalWords++;
 
-                                } else {
-                                    if (!word.equals("")){
-                                        wordMap.put(word, wordMap.getOrDefault(word, 0) + 1);
-
-                                    }
+                                if (queryTerms.contains(word)) {
+                                    keywords.put(word, keywords.getOrDefault(word, 0) + 1);
                                 }
                             }
 
-                            /* a.   How many unique keywords are there in this collection?
-                            b.   What are the top 10 most frequently occurring keywords in the collection?
-                            c.   For each of the top 10 keywords, indicate which ones are meaningful.
-                            d.   What are the bottom 10 keywords in the collection?*/
                         }
-
                     }
-                } catch (IOException x) {
-                    System.err.println(x);
+
                 }
 
             }
-        } // end for
-        return wordMap;
+        } catch (IOException x) {
+            System.err.println(x);
+        }
 
+        double rank = 0;
+        String queryTerm = "";
+        st = new StringTokenizer(query, " ");
+        while (st.hasMoreElements()) {
+
+            queryTerm = st.nextToken();
+
+            if(keywords.containsKey(queryTerm)) {
+                rank += (keywords.get(queryTerm) / totalWords);
+                //System.out.println(rank);
+                //System.out.println(queryTerm + " value: " + keywords.get(queryTerm) + ", total words: " + totalWords);
+            }
+        }
+        return rank;
     }
 
     // Returns false if the word is not a stopword
@@ -190,5 +242,6 @@ public class Main {
             return true;
         }
     }
+
 
 }
