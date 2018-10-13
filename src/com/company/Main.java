@@ -1,28 +1,22 @@
 package com.company;
 
 import java.io.*;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.StringTokenizer;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.TreeSet;
-import java.util.ArrayList;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 // ./Main <Document set> <Query file>
 
 public class Main {
 
-
     static File stopWords = new File("/Users/ethananderson/Downloads/stop-word-list.txt");
+
     // Create a TreeSet from the provided stopWords file. This is class-defined since only one instance is needed
     static TreeSet<String> stopWordsTree= getStopWordsAsTree(stopWords);
 
     static Porter porter = new Porter();
 
     static ArrayList<String> queryList = new ArrayList<>();
-    static long start;
-
     public static void main(String[] args) {
         /*
         if (args.length != 2) {
@@ -42,18 +36,24 @@ public class Main {
 
         createQueryTermList(queryDocument);
 
-        HashMap<String, Double> docRanks = new HashMap<>();
+        ExecutorService executorService = Executors.newFixedThreadPool(15);
 
-        // Process each query
-        for (String query : queryList) {
-            start = System.currentTimeMillis();
-            // call query method
-            docRanks = createPageFromDocs(fileList, query);
-            // Sort docRanks by value and Print top 10
-            displayResults(docRanks, query);
+        for (String query: queryList) {
+            executorService.execute(new Runnable() {
+                public void run() {
+                    long start = System.currentTimeMillis();
+                    // call query method
+                    HashMap<String, Double> docRanks = createPageFromDocs(fileList, query);
+                    // Sort docRanks by value and Print top 10
+                    displayResults(docRanks, query, start);
+                }
+            });
         }
 
+        executorService.shutdown();
+
     }
+
 
     public static void createQueryTermList (File file) {
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
@@ -102,7 +102,7 @@ public class Main {
         return wordMap.size();
     }
 
-    public static void displayResults(HashMap<String, Double> wordMap, String query) {
+    public static synchronized void displayResults(HashMap<String, Double> wordMap, String query, long start) {
         Object[] sortedMap = sortMap(wordMap);
         long time = System.currentTimeMillis() - start;
         System.out.println("Query: \"" + query + "\", time to process: " + time);
