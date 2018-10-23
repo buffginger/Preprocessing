@@ -5,11 +5,11 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-// ./Main <Document set> <Query file>
+// ./p1 <Document set> <Query file>
 
-public class Main {
+public class p1 {
 
-    static File stopWords = new File("/Users/ethananderson/Downloads/stop-word-list.txt");
+    static File stopWords = new File("stop-word-list.txt");
 
     // Create a TreeSet from the provided stopWords file. This is class-defined since only one instance is needed
     static TreeSet<String> stopWordsTree= getStopWordsAsTree(stopWords);
@@ -18,32 +18,40 @@ public class Main {
 
     static ArrayList<String> queryList = new ArrayList<>();
     public static void main(String[] args) {
-        /*
+
         if (args.length != 2) {
             System.out.println("Please use two command line arguments.\n" +
-                    "Example: ./Main <Document Set> <Query Terms File>");
+                    "Example: ./p1 <Document Set> <Query Terms File>");
             System.exit(0); }
-            */
+
 
         String fileName;
 
         // Set the path to the documentset folder
-        //File documentSet = new File(args[0]);
-        //File queryDocument = new File(args[1]);
-        File queryDocument = new File("/Users/ethananderson/Downloads/query.txt");
-        File documentSet = new File("/Users/ethananderson/Downloads/documentset");
+        File documentSet = new File(args[0]);
+        File queryDocument = new File(args[1]);
+
+        //File queryDocument = new File("/Users/ethananderson/Downloads/query.txt");
+        //File documentSet = new File("/Users/ethananderson/Downloads/documentset");
+
         File[] fileList = documentSet.listFiles();   // Get the # of total files
 
         createQueryTermList(queryDocument);
 
-        ExecutorService executorService = Executors.newFixedThreadPool(15);
+        // Create a thread pool so threads can be reused if needed
+        ExecutorService executorService = Executors.newFixedThreadPool(20);
 
+        // for each query
         for (String query: queryList) {
+
+            // each thread will call this run() method
             executorService.execute(new Runnable() {
                 public void run() {
                     long start = System.currentTimeMillis();
+
                     // call query method
                     HashMap<String, Double> docRanks = createPageFromDocs(fileList, query);
+
                     // Sort docRanks by value and Print top 10
                     displayResults(docRanks, query, start);
                 }
@@ -105,7 +113,7 @@ public class Main {
     public static synchronized void displayResults(HashMap<String, Double> wordMap, String query, long start) {
         Object[] sortedMap = sortMap(wordMap);
         long time = System.currentTimeMillis() - start;
-        System.out.println("Query: \"" + query + "\", time to process: " + time);
+        System.out.println("Relevant documents for query: \"" + query + "\", time to process: " + time);
         for (int i = 0; i < 10; i++) {
             System.out.println(sortedMap[i].toString().replaceFirst("\\.txt", "").replaceFirst("=", ":\t"));
         }
